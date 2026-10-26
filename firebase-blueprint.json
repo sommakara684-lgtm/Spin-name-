@@ -1,0 +1,143 @@
+{
+  "entities": {
+    "Wheel": {
+      "title": "Wheel",
+      "description": "Represents a custom or preset spin wheel configuration",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who owns this wheel"
+        },
+        "title": {
+          "type": "string",
+          "description": "The display title of the wheel"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description or context for the wheel"
+        },
+        "themePalette": {
+          "type": "string",
+          "description": "Color palette theme name (e.g. RAINBOW, NEON, PASTEL, SUNSET, OCEAN, CANDY)"
+        },
+        "spinDurationSeconds": {
+          "type": "number",
+          "description": "Duration in seconds for the wheel deceleration animation"
+        },
+        "autoRemoveWinner": {
+          "type": "boolean",
+          "description": "Whether to auto-disable the winning item after selection"
+        },
+        "soundEnabled": {
+          "type": "boolean",
+          "description": "Whether wheel tick audio is enabled"
+        },
+        "hapticsEnabled": {
+          "type": "boolean",
+          "description": "Whether tactile vibration ticks are enabled"
+        },
+        "isPreset": {
+          "type": "boolean",
+          "description": "Whether this wheel is a built-in template"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the wheel was created"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the wheel was last modified"
+        }
+      },
+      "required": ["userId", "title", "themePalette", "spinDurationSeconds", "autoRemoveWinner", "soundEnabled", "hapticsEnabled", "createdAt", "updatedAt"]
+    },
+    "WheelItem": {
+      "title": "WheelItem",
+      "description": "Represents an individual slice/name option on a spin wheel",
+      "type": "object",
+      "properties": {
+        "wheelId": {
+          "type": "string",
+          "description": "ID of the parent wheel"
+        },
+        "userId": {
+          "type": "string",
+          "description": "UID of the owner"
+        },
+        "name": {
+          "type": "string",
+          "description": "Label of the slice option"
+        },
+        "isEnabled": {
+          "type": "boolean",
+          "description": "Whether the slice is currently active on the wheel"
+        },
+        "weight": {
+          "type": "integer",
+          "description": "Relative weight/multiplier for spin probability"
+        },
+        "colorHex": {
+          "type": "integer",
+          "description": "Optional custom color override integer"
+        },
+        "orderIndex": {
+          "type": "integer",
+          "description": "Position order in the slice list"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when item was added"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when item was last modified"
+        }
+      },
+      "required": ["wheelId", "userId", "name", "isEnabled", "weight", "orderIndex", "createdAt", "updatedAt"]
+    },
+    "SpinHistory": {
+      "title": "SpinHistory",
+      "description": "Record of a completed wheel spin and winning choice",
+      "type": "object",
+      "properties": {
+        "wheelId": {
+          "type": "string",
+          "description": "ID of the spun wheel"
+        },
+        "userId": {
+          "type": "string",
+          "description": "UID of the user who performed the spin"
+        },
+        "winnerName": {
+          "type": "string",
+          "description": "The winning name selected"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the spin completed"
+        }
+      },
+      "required": ["wheelId", "userId", "winnerName", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/wheels/{wheelId}": {
+      "schema": "Wheel",
+      "description": "User custom and saved spin wheels"
+    },
+    "/users/{userId}/wheels/{wheelId}/items/{itemId}": {
+      "schema": "WheelItem",
+      "description": "Options and names on the wheel"
+    },
+    "/users/{userId}/wheels/{wheelId}/history/{historyId}": {
+      "schema": "SpinHistory",
+      "description": "Audit history of spin outcomes"
+    }
+  }
+}

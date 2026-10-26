@@ -1,0 +1,117 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all unknown collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidWheel(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 500)) &&
+             data.themePalette is string && data.themePalette.size() <= 50 &&
+             (data.spinDurationSeconds is int || data.spinDurationSeconds is float) &&
+             data.spinDurationSeconds >= 1.0 && data.spinDurationSeconds <= 15.0 &&
+             data.autoRemoveWinner is bool &&
+             data.soundEnabled is bool &&
+             data.hapticsEnabled is bool &&
+             (!('isPreset' in data) || data.isPreset is bool);
+    }
+
+    function isValidWheelItem(data) {
+      return data.wheelId is string && data.wheelId.size() > 0 && data.wheelId.size() <= 128 &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 200 &&
+             data.isEnabled is bool &&
+             data.weight is int && data.weight >= 1 && data.weight <= 20 &&
+             data.orderIndex is int && data.orderIndex >= 0 &&
+             (!('colorHex' in data) || data.colorHex == null || data.colorHex is int);
+    }
+
+    function isValidSpinHistory(data) {
+      return data.wheelId is string && data.wheelId.size() > 0 && data.wheelId.size() <= 128 &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.winnerName is string && data.winnerName.size() >= 1 && data.winnerName.size() <= 200;
+    }
+
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+
+      match /wheels/{wheelId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn() && request.auth.uid == userId &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidWheel(incoming());
+
+        allow update: if isSignedIn() && request.auth.uid == userId &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidWheel(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'title', 'description', 'themePalette', 'spinDurationSeconds',
+                           'autoRemoveWinner', 'soundEnabled', 'hapticsEnabled', 'isPreset', 'updatedAt'
+                         ]);
+
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+
+        match /items/{itemId} {
+          allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+          allow create: if isSignedIn() && request.auth.uid == userId &&
+                           incoming().userId == request.auth.uid &&
+                           incoming().wheelId == wheelId &&
+                           incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                           incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                           isValidWheelItem(incoming());
+
+          allow update: if isSignedIn() && request.auth.uid == userId &&
+                           incoming().userId == existing().userId &&
+                           incoming().wheelId == existing().wheelId &&
+                           incoming().createdAt == existing().createdAt &&
+                           incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                           isValidWheelItem(incoming()) &&
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'name', 'isEnabled', 'weight', 'colorHex', 'orderIndex', 'updatedAt'
+                           ]);
+
+          allow delete: if isSignedIn() && request.auth.uid == userId;
+        }
+
+        match /history/{historyId} {
+          allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+          allow create: if isSignedIn() && request.auth.uid == userId &&
+                           incoming().userId == request.auth.uid &&
+                           incoming().wheelId == wheelId &&
+                           incoming().timestamp is timestamp && incoming().timestamp <= request.time &&
+                           isValidSpinHistory(incoming());
+
+          allow update: if false; // Spin records are immutable
+          allow delete: if isSignedIn() && request.auth.uid == userId;
+        }
+      }
+    }
+  }
+}
